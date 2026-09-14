@@ -1,0 +1,21 @@
+# Local PostgreSQL for development. Run: docker compose up -d
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ticketsurge
+      POSTGRES_USER: ticketsurge
+      POSTGRES_PASSWORD: ticketsurge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
