@@ -1,0 +1,86 @@
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1a1a2e;
+}
+header h1 { margin-bottom: 4px; }
+.tagline { color: #666; margin-top: 0; }
+
+.controls {
+  display: flex;
+  gap: 24px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.controls select, .controls input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.error {
+  background: #fdecea;
+  color: #a91e2c;
+  border: 1px solid #f3b4b4;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.hold-banner, .booking-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.hold-banner { background: #fff7e0; border: 1px solid #f0d484; }
+.booking-banner.confirmed { background: #e6f7ec; border: 1px solid #8fd6a8; }
+.booking-banner.pending { background: #eef2ff; border: 1px solid #a9b8f5; }
+.booking-banner.failed_dead_letter, .booking-banner.failed { background: #fdecea; border: 1px solid #f3b4b4; }
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: #3454d1;
+  color: white;
+  font-size: 0.9rem;
+}
+button.ghost {
+  background: transparent;
+  color: #3454d1;
+  border: 1px solid #3454d1;
+}
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.85rem; color: #555; }
+.legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+.dot.available { background: #4caf50; }
+.dot.held { background: #f5a623; }
+.dot.booked { background: #b0b0b0; }
+
+.section { margin-bottom: 20px; }
+.section h3 { margin-bottom: 8px; color: #333; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 6px;
+}
+.seat {
+  padding: 8px 0;
+  font-size: 0.75rem;
+  background: #4caf50;
+  color: white;
+  border-radius: 4px;
+}
+.seat.held { background: #f5a623; }
+.seat.booked { background: #b0b0b0; color: #666; }
+.seat.selected { outline: 3px solid #3454d1; }

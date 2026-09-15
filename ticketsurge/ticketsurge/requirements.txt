@@ -1,0 +1,29 @@
+# --- Core web / API ---
+Django==5.2.17
+djangorestframework==3.18.1
+django-cors-headers==4.9.0
+
+# --- Real-time (Phase 6) ---
+channels==4.3.2
+channels_redis==4.3.0
+daphne==4.2.3
+
+# --- Async queue (Phase 4/5) ---
+celery==5.6.3
+django_celery_results==2.6.0
+kombu==5.6.2
+amqp==5.3.1
+
+# --- Redis (seat holds + channel layer + Celery result backend option) ---
+redis==8.1.0
+
+# --- Database drivers ---
+psycopg2-binary==2.9.13   # PostgreSQL (last-resort fallback, and this repo's dev/test default)
+# oracledb==2.4.1         # Oracle (primary) — uncomment when running against Oracle
+# mysqlclient==2.2.4      # MySQL (fallback) — uncomment when running against MySQL; needs libmysqlclient-dev
+
+# --- Testing / load testing ---
+pytest==9.1.1
+pytest-django==4.14.0
+pytest-asyncio==1.4.0
+locust==2.46.5
