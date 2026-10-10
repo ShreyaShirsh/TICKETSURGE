@@ -393,17 +393,6 @@ docker-compose.yml       full stack (Oracle or Postgres profile, Redis, RabbitMQ
   above, plus the connection-pool bottleneck that was actually found and
   actually fixed.
 
-## Resume bullet
-
-> Built TicketSurge, an event-driven ticketing platform (Django/DRF,
-> Oracle/PostgreSQL, Redis, RabbitMQ/Celery, Channels, React) that
-> guarantees zero seat overselling under flash-sale concurrency via Redis
-> holds, row-level locking, and idempotent booking, with a saga pattern
-> for distributed consistency — verified by a Locust load test (250
-> concurrent users, 40-seat pool) showing zero oversell across 2,000+
-> concurrent booking attempts, and by real-thread contention tests against
-> PostgreSQL.
-
 ## Optional AI extension
 
 Not pursued in this build. The master build prompt (§6) names three
