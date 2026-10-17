@@ -1,12 +1,15 @@
+import logging
+
 from django.conf import settings
 from django.db import transaction
+from redis.exceptions import RedisError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework.views import APIView, exception_handler
 
 from core.booking import SeatUnavailable, confirm_seat
-from core.holds import HoldConflict, InvalidHold, place_hold, release_hold
+from core.holds import HoldConflict, InvalidHold, held_seat_ids, place_hold, release_hold
 from core.models import Booking, Customer, Event, Seat
 from core.realtime import broadcast_seat_update
 from core.serializers import (
@@ -17,6 +20,21 @@ from core.serializers import (
     SeatSerializer,
 )
 from core.tasks import run_booking_saga
+
+logger = logging.getLogger(__name__)
+
+
+def api_exception_handler(exc, context):
+    """Turn "can't reach Redis" into a clear 503 instead of a bare 500, so a
+    missing/wrong REDIS_URL is obvious from the UI and the logs."""
+    if isinstance(exc, RedisError):
+        logger.exception("Redis unavailable while handling %s", context.get("view"))
+        return Response(
+            {"detail": "Seat holds are temporarily unavailable (can't reach Redis). "
+                       "Check that REDIS_URL is set and correct."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return exception_handler(exc, context)
 
 
 class HealthView(APIView):
@@ -31,8 +49,15 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"])
     def seats(self, request, pk=None):
         event = self.get_object()
-        seats = event.seats.all()
-        return Response(SeatSerializer(seats, many=True).data)
+        seats = list(event.seats.all())
+        try:
+            held_ids = held_seat_ids([s.id for s in seats])
+        except RedisError:
+            # The seat map is still useful without hold info; holding a
+            # seat will surface the Redis problem with a clear message.
+            logger.exception("Couldn't read seat holds from Redis")
+            held_ids = set()
+        return Response(SeatSerializer(seats, many=True, context={"held_ids": held_ids}).data)
 
 
 class SeatViewSet(viewsets.ReadOnlyModelViewSet):

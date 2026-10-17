@@ -58,6 +58,14 @@ def get_hold_owner(seat_id: int) -> str | None:
     return get_redis().get(_hold_key(seat_id))
 
 
+def held_seat_ids(seat_ids: list[int]) -> set[int]:
+    """Which of these seats currently have an active hold (one MGET)."""
+    if not seat_ids:
+        return set()
+    owners = get_redis().mget([_hold_key(sid) for sid in seat_ids])
+    return {sid for sid, owner in zip(seat_ids, owners) if owner is not None}
+
+
 def validate_hold(seat_id: int, hold_token: str) -> None:
     owner = get_hold_owner(seat_id)
     if owner is None:

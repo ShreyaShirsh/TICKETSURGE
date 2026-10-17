@@ -26,7 +26,11 @@ class SeatSerializer(serializers.ModelSerializer):
         fields = ["id", "event", "section", "row", "number", "price_cents", "available", "status"]
 
     def get_status(self, obj):
-        return "available" if obj.available > 0 else "booked"
+        if obj.available <= 0:
+            return "booked"
+        if obj.id in self.context.get("held_ids", ()):
+            return "held"
+        return "available"
 
 
 class TicketSerializer(serializers.ModelSerializer):
