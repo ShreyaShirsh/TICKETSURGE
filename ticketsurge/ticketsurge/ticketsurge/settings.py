@@ -8,14 +8,24 @@ only connection settings differ. SQLite is supported as a zero-install
 option for quick local iteration and CI smoke tests.
 """
 import os
+import urllib.parse
 from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Vercel sets VERCEL=1 in builds and functions; used below to pick
+# serverless-friendly defaults (no Celery worker, DEBUG off, HTTPS proxy).
+ON_VERCEL = os.environ.get("VERCEL") == "1"
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-production")
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+DEBUG = os.environ.get("DJANGO_DEBUG", "0" if ON_VERCEL else "1") == "1"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
+
+if ON_VERCEL:
+    # Vercel terminates TLS; trust its forwarded proto so CSRF origin
+    # checks (e.g. the admin login form) see the request as HTTPS.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
     "daphne",
@@ -70,10 +80,31 @@ ASGI_APPLICATION = "ticketsurge.asgi.application"
 # Database — Oracle (primary) -> MySQL (fallback) -> PostgreSQL (last
 # resort) -> SQLite (dev/CI only, not part of the fallback ladder proper).
 # Select with DB_ENGINE=oracle|mysql|postgres|sqlite
+#
+# DATABASE_URL (as set by Vercel's Neon / Postgres integrations) takes
+# precedence over all of the above when present.
 # --------------------------------------------------------------------------
 DB_ENGINE = os.environ.get("DB_ENGINE", "sqlite")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if DB_ENGINE == "oracle":
+if DATABASE_URL:
+    _db_url = urllib.parse.urlparse(DATABASE_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": urllib.parse.unquote(_db_url.path.lstrip("/")),
+            "USER": urllib.parse.unquote(_db_url.username or ""),
+            "PASSWORD": urllib.parse.unquote(_db_url.password or ""),
+            "HOST": _db_url.hostname or "",
+            "PORT": _db_url.port or "",
+            # Query params such as ?sslmode=require go straight to libpq.
+            "OPTIONS": dict(urllib.parse.parse_qsl(_db_url.query)),
+            # Serverless instances come and go; don't hold connections open
+            # by default (use the provider's pooled URL for heavy traffic).
+            "CONN_MAX_AGE": int(os.environ.get("POSTGRES_CONN_MAX_AGE", 0)),
+        }
+    }
+elif DB_ENGINE == "oracle":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.oracle",
@@ -130,13 +161,21 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+# Vercel runs collectstatic during the build when STATIC_ROOT is set and
+# serves the result (admin CSS/JS) from its CDN.
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --------------------------------------------------------------------------
 # Redis — seat holds, DRF throttling cache, and the Channels layer.
 # --------------------------------------------------------------------------
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-REDIS_HOLDS_DB = os.environ.get("REDIS_HOLDS_URL", "redis://localhost:6379/1")
+# Hosted Redis (e.g. Upstash) usually exposes a single database, so when
+# only REDIS_URL is set, holds and the channel layer share it (their keys
+# don't overlap: "seat:hold:*" vs channels' "asgi:*").
+REDIS_HOLDS_DB = os.environ.get("REDIS_HOLDS_URL") or (
+    REDIS_URL if "REDIS_URL" in os.environ else "redis://localhost:6379/1"
+)
 
 CHANNEL_LAYERS = {
     "default": {
@@ -160,7 +199,11 @@ CELERY_TIMEZONE = "UTC"
 
 # In test/dev-without-a-broker mode tasks execute synchronously & eagerly,
 # which is what lets the saga/async pipeline be exercised without RabbitMQ.
-CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "0") == "1"
+# On Vercel there is no long-running worker, so eager is the default there:
+# the saga runs inside the confirm request right after the booking commits.
+CELERY_TASK_ALWAYS_EAGER = os.environ.get(
+    "CELERY_TASK_ALWAYS_EAGER", "1" if ON_VERCEL else "0"
+) == "1"
 CELERY_TASK_EAGER_PROPAGATES = True
 
 # Dead-letter routing: poison messages that exhaust retries land in

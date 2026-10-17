@@ -14,3 +14,4 @@ frontend/dist/
 # load test output
 *.csv
 dump.rdb
+staticfiles/

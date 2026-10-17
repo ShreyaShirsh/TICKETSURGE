@@ -58,7 +58,23 @@ export default function App() {
       );
     });
     wsRef.current = ws;
-    return () => ws.close();
+
+    // Fallback: if the socket can't connect or drops (no channel layer,
+    // serverless instance recycled, flaky network), poll the seat list so
+    // the map still stays current.
+    let cancelled = false;
+    let pollId = null;
+    ws.onclose = () => {
+      if (cancelled || pollId) return;
+      pollId = setInterval(() => {
+        api.listSeats(eventId).then(setSeats).catch(() => {});
+      }, 3000);
+    };
+    return () => {
+      cancelled = true;
+      clearInterval(pollId);
+      ws.close();
+    };
   }, [eventId]);
 
   // Hold expired locally -> drop it so the UI stops offering "confirm".

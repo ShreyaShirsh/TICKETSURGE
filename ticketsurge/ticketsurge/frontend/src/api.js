@@ -1,5 +1,12 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
-const WS_BASE = import.meta.env.VITE_WS_BASE || API_BASE.replace(/^http/, "ws");
+// Empty base = same origin. On Vercel the Django service is mounted at
+// /api, /admin, /health and /ws on the same domain as this frontend (see the
+// repo-root vercel.json); in `npm run dev` the Vite proxy forwards those paths.
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const WS_BASE =
+  import.meta.env.VITE_WS_BASE ||
+  (API_BASE
+    ? API_BASE.replace(/^http/, "ws")
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
 
 async function request(path, options = {}) {
   const resp = await fetch(`${API_BASE}${path}`, {
