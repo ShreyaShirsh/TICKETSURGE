@@ -31,7 +31,7 @@ def api_exception_handler(exc, context):
         logger.exception("Redis unavailable while handling %s", context.get("view"))
         return Response(
             {"detail": "Seat holds are temporarily unavailable (can't reach Redis). "
-                       "Check that REDIS_URL is set and correct."},
+                       "Check that REDIS_URL is set and starts with rediss:// or redis://."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     return exception_handler(exc, context)

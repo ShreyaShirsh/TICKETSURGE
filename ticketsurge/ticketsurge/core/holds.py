@@ -23,7 +23,14 @@ _redis_client = None
 def get_redis():
     global _redis_client
     if _redis_client is None:
-        _redis_client = redis.Redis.from_url(settings.REDIS_HOLDS_DB, decode_responses=True)
+        try:
+            _redis_client = redis.Redis.from_url(settings.REDIS_HOLDS_DB, decode_responses=True)
+        except ValueError as exc:
+            # e.g. an https:// REST URL pasted where a redis(s):// URL belongs.
+            # Re-raise as a RedisError so callers treat it like "Redis down".
+            raise redis.exceptions.ConnectionError(
+                f"Invalid Redis URL (expected redis:// or rediss://): {exc}"
+            ) from exc
     return _redis_client
 
 
